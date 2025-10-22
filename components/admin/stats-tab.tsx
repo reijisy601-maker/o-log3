@@ -251,7 +251,13 @@ export default function StatsTab() {
                   />
                 ))}
               </Pie>
-              <RechartsTooltip formatter={(value: number, name: string) => [`${value} 件`, name]} />
+              <RechartsTooltip
+                formatter={(value: unknown, name: unknown) => {
+                  const numericValue = typeof value === 'number' ? value : null
+                  const label = typeof name === 'string' ? name : ''
+                  return [numericValue !== null ? `${numericValue} 件` : '-', label]
+                }}
+              />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -269,9 +275,12 @@ export default function StatsTab() {
               <XAxis dataKey="year_month" stroke="#0f172a" />
               <YAxis stroke="#0f172a" domain={[0, 100]} />
               <RechartsTooltip
-                formatter={(value: number | null) =>
-                  typeof value === 'number' ? [`${value.toFixed(1)} 点`, '平均スコア'] : ['-', '平均スコア']
-                }
+                formatter={(value: unknown) => {
+                  const numericValue = typeof value === 'number' ? value : null
+                  return numericValue !== null
+                    ? [`${numericValue.toFixed(1)} 点`, '平均スコア']
+                    : ['-', '平均スコア']
+                }}
               />
               <Line
                 type="monotone"

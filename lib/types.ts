@@ -45,3 +45,10 @@ export interface Submission {
   submitted_at: string
   evaluated_at: string | null
 }
+
+// 月次統計
+export interface MonthlyStats {
+  month: string
+  submission_rate: number
+  average_score: number
+}

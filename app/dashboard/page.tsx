@@ -270,7 +270,7 @@ const [isCompressing, setIsCompressing] = useState(false)
 
       const totalScore = Math.round((Number(luggageData.score) + Number(toolboxData.score)) / 2)
 
-      await fetch('/api/submissions', {
+      const submissionResponse = await fetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -282,6 +282,18 @@ const [isCompressing, setIsCompressing] = useState(false)
           toolboxComment: toolboxData.comment,
         }),
       })
+
+      const submissionPayload = await submissionResponse.json().catch(() => null)
+
+      if (!submissionResponse.ok || !submissionPayload?.success) {
+        const errorMessage =
+          submissionPayload?.error ||
+          submissionPayload?.details ||
+          '提出履歴の保存に失敗しました'
+        throw Object.assign(new Error(errorMessage), {
+          details: submissionPayload,
+        })
+      }
 
       setEvaluationResult({
         totalScore,

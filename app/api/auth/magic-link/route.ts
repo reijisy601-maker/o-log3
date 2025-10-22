@@ -2,22 +2,11 @@
 // 問題修正: .single() → .maybeSingle() で既存ユーザーチェックを改善
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import { getSiteUrl } from '@/lib/utils';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
-const isDevelopment = process.env.NODE_ENV === 'development';
-
-function getSiteUrl(): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL;
-  }
-
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-
-  return 'http://localhost:3000';
-}
+  const isDevelopment = process.env.NODE_ENV === 'development';
   const log = (...args: unknown[]) => {
     if (isDevelopment) {
       console.log(...args);
@@ -45,6 +34,13 @@ function getSiteUrl(): string {
 
     const supabase = await createClient();
     const supabaseAdmin = createServiceRoleClient();
+    const siteUrl = getSiteUrl();
+
+    if (isDevelopment) {
+      log('[Magic Link] Detected Site URL:', siteUrl);
+      log('[Magic Link] Redirect URL:', `${siteUrl}/auth/callback`);
+      log('[Magic Link] Environment:', process.env.VERCEL_ENV || 'local');
+    }
 
     // security_settings取得
     log('=== security_settings取得試行 ===');
@@ -86,13 +82,6 @@ function getSiteUrl(): string {
       log('認証コード不要でログイン用Magic Link送信');
       
       // 既存ユーザー: 認証コード不要でMagic Link送信
-      const siteUrl = getSiteUrl();
-      if (isDevelopment) {
-        log('[Magic Link] Detected Site URL:', siteUrl);
-        log('[Magic Link] Redirect URL:', `${siteUrl}/auth/callback`);
-        log('[Magic Link] Environment:', process.env.VERCEL_ENV || 'local');
-      }
-
       const { error: signInError } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -166,13 +155,6 @@ function getSiteUrl(): string {
 
     // 新規登録用Magic Link送信
     log('=== 新規登録用Magic Link送信 ===');
-    const siteUrl = getSiteUrl();
-    if (isDevelopment) {
-      log('[Magic Link] Detected Site URL:', siteUrl);
-      log('[Magic Link] Redirect URL:', `${siteUrl}/auth/callback`);
-      log('[Magic Link] Environment:', process.env.VERCEL_ENV || 'local');
-    }
-
     const { error: signUpError } = await supabase.auth.signInWithOtp({
       email,
       options: {

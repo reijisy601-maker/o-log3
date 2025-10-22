@@ -54,7 +54,10 @@ const isSubmissionRecord = (value: unknown): value is Submission => {
     createdAt === null || createdAt === undefined || typeof createdAt === 'string'
   const isValidYearMonth =
     yearMonth === null || yearMonth === undefined || typeof yearMonth === 'string'
-  const isValidFeedback = feedback === undefined || isRecord(feedback)
+  const isValidFeedback =
+    feedback === undefined ||
+    isRecord(feedback) ||
+    typeof feedback === 'string'
 
   return isValidDateField && isValidYearMonth && isValidFeedback
 }
@@ -67,6 +70,25 @@ const getErrorMessage = (error: unknown): string => {
     return error
   }
   return ''
+}
+
+const parseAiFeedback = (value: unknown): SubmissionFeedback | undefined => {
+  if (isRecord(value)) {
+    return value as SubmissionFeedback
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      if (isRecord(parsed)) {
+        return parsed as SubmissionFeedback
+      }
+    } catch (error) {
+      console.warn('[history] ai_feedback parse error:', error)
+    }
+  }
+
+  return undefined
 }
 
 export default function HistoryTab({ refreshTrigger }: { refreshTrigger: number }) {
@@ -103,7 +125,7 @@ export default function HistoryTab({ refreshTrigger }: { refreshTrigger: number 
       const records: Submission[] = submissionsData
         .map((entry) => ({
           ...entry,
-          ai_feedback: entry.ai_feedback ?? {},
+          ai_feedback: parseAiFeedback(entry.ai_feedback) ?? {},
         }))
         .sort((a, b) => {
           const aDate = new Date(a.created_at ?? `${a.year_month ?? '1970-01'}-01`).getTime()

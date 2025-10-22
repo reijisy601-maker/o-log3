@@ -26,7 +26,24 @@ export async function GET() {
       return NextResponse.json({ error: 'データ取得に失敗しました' }, { status: 500 })
     }
 
-    return NextResponse.json({ submissions: data ?? [] })
+    const submissions = (data ?? []).map((entry) => {
+      let feedback = entry.ai_feedback
+      if (typeof feedback === 'string') {
+        try {
+          feedback = JSON.parse(feedback)
+        } catch (parseError) {
+          console.warn('Failed to parse ai_feedback JSON:', parseError)
+          feedback = null
+        }
+      }
+
+      return {
+        ...entry,
+        ai_feedback: feedback,
+      }
+    })
+
+    return NextResponse.json({ submissions })
   } catch (error) {
     console.error('Unexpected error:', error)
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
@@ -54,28 +71,33 @@ export async function POST(request: Request) {
 
     console.log('ユーザーID:', user.id)
 
+    const now = new Date()
+    const yearMonth = now.toISOString().slice(0, 7)
+    const aiFeedback = {
+      luggage: {
+        score: Number(body.luggageScore),
+        comment: body.luggageComment,
+      },
+      toolbox: {
+        score: Number(body.toolboxScore),
+        comment: body.toolboxComment,
+      },
+    }
+
     const insertData = {
       user_id: user.id,
-      year_month: new Date().toISOString().slice(0, 7),
-      image_url: body.luggageUrl ?? body.tool箱Url ?? null,
-      luggage_image_url: body.luggageUrl,
-      toolbox_image_url: body.toolb箱Url,
+      email: user.email ?? null,
+      year_month: yearMonth,
+      luggage_image_url: body.luggageUrl ?? null,
+      toolbox_image_url: body.toolboxUrl ?? null,
       luggage_score: body.luggageScore,
       toolbox_score: body.toolboxScore,
       luggage_feedback: body.luggageComment,
       toolbox_feedback: body.toolboxComment,
       ai_score: Math.round((Number(body.luggageScore) + Number(body.toolboxScore)) / 2),
-      ai_feedback: {
-        luggage: {
-          score: Number(body.luggageScore),
-          comment: body.luggageComment,
-        },
-        toolbox: {
-          score: Number(body.toolboxScore),
-          comment: body.toolboxComment,
-        },
-      },
-      updated_at: new Date().toISOString(),
+      ai_feedback: JSON.stringify(aiFeedback),
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
     }
 
     console.log('INSERT用データ:', JSON.stringify(insertData, null, 2))

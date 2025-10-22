@@ -52,3 +52,13 @@ export interface MonthlyStats {
   submission_rate: number
   average_score: number
 }
+
+// ユーザー情報
+export interface User {
+  id: string
+  email: string
+  name?: string | null
+  role: 'user' | 'admin'
+  created_at: string
+  last_login?: string | null
+}

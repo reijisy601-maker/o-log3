@@ -31,7 +31,10 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+.env.local
+.env*.local
+.env.codex
+.env.codex.*
 
 # vercel
 .vercel
@@ -39,3 +42,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Codex セッションログ（プライベート情報を含む可能性があるため）
+.codex-sessions/
+.codex-memo.md
+
+# 共有するファイル（コミットする）
+# .codex-context.md
+# .codex-progress.md
+# .codex-decisions.md

@@ -121,7 +121,7 @@ export async function POST(request: Request) {
         throw new Error('Invalid storage URL format')
       }
 
-      const filePath = match[1]
+      const filePath = decodeURIComponent(match[1])
       const { data, error } = await supabase.storage
         .from('submissions')
         .createSignedUrl(filePath, 3600)

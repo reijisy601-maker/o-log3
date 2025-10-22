@@ -62,6 +62,24 @@ export async function GET(request: Request) {
   if (isDevelopment) {
     console.log('=== ロール確認 ===')
   }
+  const metadataRoles = [
+    session.user.app_metadata?.role,
+    Array.isArray(session.user.app_metadata?.roles)
+      ? session.user.app_metadata?.roles?.[0]
+      : undefined,
+    session.user.user_metadata?.role,
+  ].filter((value): value is string => typeof value === 'string')
+
+  const isAdminByMetadata = metadataRoles.includes('admin')
+  const adminEmailList = (process.env.ADMIN_EMAILS || process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  const isAdminEmail = session.user.email
+    ? adminEmailList.includes(session.user.email)
+    : false
+
   const { data: profile, error: profileError } = await adminClient
     .from('user_profiles')
     .select('role')
@@ -76,10 +94,31 @@ export async function GET(request: Request) {
     console.log('プロフィール:', profile)
   }
 
+  let effectiveRole = profile?.role || null
+
+  if (!effectiveRole && isAdminByMetadata) {
+    effectiveRole = 'admin'
+  }
+
+  if (!effectiveRole && isAdminEmail) {
+    effectiveRole = 'admin'
+  }
+
   let redirectPath = '/dashboard'
 
-  if (profile?.role === 'admin') {
+  if (effectiveRole === 'admin') {
     redirectPath = '/admin'
+    if (profile?.role !== 'admin') {
+      const { error: roleUpdateError } = await adminClient
+        .from('user_profiles')
+        .update({ role: 'admin', updated_at: new Date().toISOString() })
+        .eq('id', session.user.id)
+
+      if (roleUpdateError) {
+        console.error('Failed to elevate user role to admin:', roleUpdateError)
+      }
+    }
+
     if (isDevelopment) {
       console.log('✅ 管理者としてリダイレクト: /admin')
     }
@@ -100,7 +139,7 @@ export async function GET(request: Request) {
         id: session.user.id,
         email: session.user.email,
         display_name: session.user.email?.split('@')[0] || 'User',
-        role: 'user',
+        role: effectiveRole ?? 'user',
       })
 
     if (insertError) {
@@ -111,7 +150,9 @@ export async function GET(request: Request) {
       }
     }
 
-    redirectPath = '/dashboard'
+    if (!effectiveRole || effectiveRole === 'user') {
+      redirectPath = '/dashboard'
+    }
   }
 
   if (isDevelopment) {

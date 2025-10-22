@@ -226,10 +226,10 @@ export async function POST(request: Request) {
     console.log('[evaluate] Final result:', payload)
 
     return NextResponse.json(payload)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[evaluate] Error:', error)
 
-    const message = String(error?.message ?? '')
+    const message = error instanceof Error ? error.message : ''
     let status = 500
     let errorMessage = '評価処理中に予期しないエラーが発生しました'
     let suggestions = [

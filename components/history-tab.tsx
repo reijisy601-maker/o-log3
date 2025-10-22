@@ -6,23 +6,67 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle, TrendingUp, Calendar } from 'lucide-react'
 
+type SubmissionFeedbackEntry = {
+  score?: number
+  comment?: string
+}
+
+type SubmissionFeedback = Record<string, SubmissionFeedbackEntry>
+
 interface Submission {
   id: string
   year_month: string | null
   luggage_image_url: string
   toolbox_image_url: string
   ai_score: number
-  ai_feedback: {
-    luggage?: { score?: number; comment?: string }
-    toolbox?: { score?: number; comment?: string }
-    [key: string]: any
-  }
+  ai_feedback?: SubmissionFeedback
   created_at: string | null
 }
 
 interface StatsSummary {
   recentAverage: number | null
   totalCount: number
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const isSubmissionRecord = (value: unknown): value is Submission => {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  const record = value as Record<string, unknown>
+  if (
+    typeof record.id !== 'string' ||
+    typeof record.luggage_image_url !== 'string' ||
+    typeof record.toolbox_image_url !== 'string' ||
+    typeof record.ai_score !== 'number'
+  ) {
+    return false
+  }
+
+  const createdAt = record.created_at
+  const yearMonth = record.year_month
+  const feedback = record.ai_feedback
+
+  const isValidDateField =
+    createdAt === null || createdAt === undefined || typeof createdAt === 'string'
+  const isValidYearMonth =
+    yearMonth === null || yearMonth === undefined || typeof yearMonth === 'string'
+  const isValidFeedback = feedback === undefined || isRecord(feedback)
+
+  return isValidDateField && isValidYearMonth && isValidFeedback
+}
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  if (typeof error === 'string') {
+    return error
+  }
+  return ''
 }
 
 export default function HistoryTab({ refreshTrigger }: { refreshTrigger: number }) {
@@ -41,23 +85,37 @@ export default function HistoryTab({ refreshTrigger }: { refreshTrigger: number 
 
     try {
       const response = await fetch('/api/submissions')
-      const payload = await response.json().catch(() => null)
+      const payload = (await response.json().catch(() => null)) as unknown
 
-      if (!response.ok || !payload) {
-        throw new Error(payload?.error ?? '履歴の取得に失敗しました')
+      if (!response.ok) {
+        const payloadRecord = isRecord(payload) ? payload : null
+        const payloadError =
+          payloadRecord && typeof payloadRecord.error === 'string' ? payloadRecord.error : null
+        throw new Error(payloadError ?? '履歴の取得に失敗しました')
       }
 
-      const records: Submission[] = (payload.submissions ?? []).sort((a: Submission, b: Submission) => {
-        const aDate = new Date(a.created_at ?? `${a.year_month ?? '1970-01'}-01`).getTime()
-        const bDate = new Date(b.created_at ?? `${b.year_month ?? '1970-01'}-01`).getTime()
-        return bDate - aDate
-      })
+      if (!isRecord(payload) || !Array.isArray(payload.submissions)) {
+        throw new Error('履歴の取得に失敗しました')
+      }
+
+      const submissionsData = (payload.submissions as unknown[]).filter(isSubmissionRecord)
+
+      const records: Submission[] = submissionsData
+        .map((entry) => ({
+          ...entry,
+          ai_feedback: entry.ai_feedback ?? {},
+        }))
+        .sort((a, b) => {
+          const aDate = new Date(a.created_at ?? `${a.year_month ?? '1970-01'}-01`).getTime()
+          const bDate = new Date(b.created_at ?? `${b.year_month ?? '1970-01'}-01`).getTime()
+          return bDate - aDate
+        })
 
       setSubmissions(records)
       updateStats(records)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[history] fetch error:', err)
-      setError(err?.message ?? '履歴の読み込み中にエラーが発生しました')
+      setError(getErrorMessage(err) || '履歴の読み込み中にエラーが発生しました')
     } finally {
       setIsLoading(false)
     }

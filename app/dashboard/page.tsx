@@ -18,6 +18,48 @@ interface UploadedImage {
   preview: string
 }
 
+type EvaluationErrorDetails = {
+  suggestions?: string[]
+  error?: string
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === 'string') return error
+  return ''
+}
+
+const getEvaluationDetails = (error: unknown): EvaluationErrorDetails | null => {
+  if (!isRecord(error) || !('details' in error)) {
+    return null
+  }
+
+  const rawDetails = (error as { details?: unknown }).details
+  if (!isRecord(rawDetails)) {
+    return null
+  }
+
+  const suggestionsValue = (rawDetails as Record<string, unknown>).suggestions
+  const errorValue = (rawDetails as Record<string, unknown>).error
+
+  const suggestions = Array.isArray(suggestionsValue)
+    ? suggestionsValue.filter((item): item is string => typeof item === 'string')
+    : undefined
+  const errorMessage = typeof errorValue === 'string' ? errorValue : undefined
+
+  if (!suggestions?.length && !errorMessage) {
+    return null
+  }
+
+  return {
+    suggestions,
+    error: errorMessage,
+  }
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
@@ -167,9 +209,12 @@ const [isCompressing, setIsCompressing] = useState(false)
       })
 
       return { luggageUrl, toolboxUrl }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      console.error('[dashboard] image upload error:', error)
+      const message =
+        getErrorMessage(error) || '時間をおいて再試行してください。'
       toast.error('アップロードに失敗しました', {
-        description: error?.message ?? '時間をおいて再試行してください。',
+        description: message,
       })
       return null
     } finally {
@@ -251,15 +296,17 @@ const [isCompressing, setIsCompressing] = useState(false)
       toast.success('評価が完了しました', {
         description: `総合スコア: ${totalScore}点。履歴タブで詳細を確認できます。`,
       })
-    } catch (error: any) {
-      const details = error?.details
-      if (details?.suggestions) {
+    } catch (error: unknown) {
+      console.error('[dashboard] evaluation error:', error)
+      const details = getEvaluationDetails(error)
+      if (details?.suggestions?.length) {
         toast.error(details.error ?? '評価を完了できませんでした', {
           description: details.suggestions.join(' / '),
         })
       } else {
         toast.error('評価を完了できませんでした', {
-          description: error?.message ?? '通信状況を確認し、再度お試しください。',
+          description:
+            getErrorMessage(error) || '通信状況を確認し、再度お試しください。',
         })
       }
     } finally {

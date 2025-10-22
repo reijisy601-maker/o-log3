@@ -56,14 +56,14 @@ function sanitizePayload(payload: UpdatePayload): UpdatePayload {
   return result
 }
 
-export async function PUT(request: Request, context: { params: { id: string } }) {
+export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
   const adminCheck = await ensureAdmin()
 
   if (adminCheck.status !== 200) {
     return NextResponse.json({ success: false, error: adminCheck.error }, { status: adminCheck.status })
   }
 
-  const targetUserId = context.params?.id
+  const { id: targetUserId } = await context.params
 
   if (!targetUserId) {
     return NextResponse.json({ success: false, error: 'ユーザーIDが必要です' }, { status: 400 })
@@ -128,18 +128,18 @@ export async function PUT(request: Request, context: { params: { id: string } })
   }
 }
 
-export async function PATCH(request: Request, context: { params: { id: string } }) {
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   return PUT(request, context)
 }
 
-export async function DELETE(request: Request, context: { params: { id: string } }) {
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   const adminCheck = await ensureAdmin()
 
   if (adminCheck.status !== 200) {
     return NextResponse.json({ success: false, error: adminCheck.error }, { status: adminCheck.status })
   }
 
-  const targetUserId = context.params?.id
+  const { id: targetUserId } = await context.params
 
   if (!targetUserId) {
     return NextResponse.json({ success: false, error: 'ユーザーIDが必要です' }, { status: 400 })

@@ -32,7 +32,7 @@ export function AdminLogsTable({ logs }: AdminLogsTableProps) {
           <TableBody>
             {logs.map((log) => (
               <TableRow key={log.id}>
-                <TableCell className="font-mono text-xs">{new Date(log.created_at).toLocaleString("ja-JP")}</TableCell>
+                <TableCell className="font-mono text-xs">{new Date(log.timestamp).toLocaleString("ja-JP")}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{log.action}</Badge>
                 </TableCell>

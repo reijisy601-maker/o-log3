@@ -36,7 +36,7 @@ export function AdminLogsTable({ logs }: AdminLogsTableProps) {
                 <TableCell>
                   <Badge variant="outline">{log.action}</Badge>
                 </TableCell>
-                <TableCell>{log.target_user_id || "-"}</TableCell>
+                <TableCell>{log.target_user_email || "-"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {log.details ? JSON.stringify(log.details) : "-"}
                 </TableCell>

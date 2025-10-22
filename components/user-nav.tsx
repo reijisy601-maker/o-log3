@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { signOut } from "@/lib/auth/actions"
+import { createClient } from "@/lib/supabase/client"
 import { LogOut, Settings, UserIcon } from "lucide-react"
 import type { User } from "@/lib/types"
 
@@ -19,6 +20,12 @@ interface UserNavProps {
 }
 
 export function UserNav({ user }: UserNavProps) {
+  const supabase = React.useMemo(() => createClient(), [])
+
+  const handleSignOut = React.useCallback(async () => {
+    await supabase.auth.signOut()
+  }, [supabase])
+
   const initials = user.name
     ? user.name
         .split(" ")
@@ -53,7 +60,7 @@ export function UserNav({ user }: UserNavProps) {
           <span>設定</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut()}>
+        <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>ログアウト</span>
         </DropdownMenuItem>

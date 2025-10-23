@@ -13,6 +13,7 @@ interface EvaluationResult {
   comment: string
 }
 
+const MAX_COMPLETION_TOKENS = 2000 // 800から増やす
 const MAX_COMMENT_LENGTH = 5000
 const PAYLOAD_SIZE_LIMIT_BYTES = 1024 * 1024
 
@@ -300,13 +301,19 @@ export async function POST(request: Request) {
     const evaluateResponse = await openai.chat.completions.create({
       model: 'gpt-5-mini-2025-08-07',
       messages: buildEvaluationPrompt(signedImageUrl),
-      max_completion_tokens: 800,
+      max_completion_tokens: MAX_COMPLETION_TOKENS,
     })
 
+    const finishReason = evaluateResponse.choices[0]?.finish_reason
     console.log(`[evaluate] ${imageType} evaluation response:`, {
-      finish_reason: evaluateResponse.choices[0]?.finish_reason,
+      finish_reason: finishReason,
       usage: evaluateResponse.usage,
     })
+
+    if (finishReason === 'length') {
+      console.error('[evaluate] Response truncated due to token limit')
+      throw new Error('評価処理がトークン上限に達しました。画像が複雑すぎる可能性があります。')
+    }
 
     const evalRaw = evaluateResponse.choices[0]?.message.content ?? ''
     if (evalRaw) {

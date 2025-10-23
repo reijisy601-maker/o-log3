@@ -272,19 +272,56 @@ export async function POST(request: Request) {
       )
     }
 
-    if (typeof evalResult.score === 'number') {
-      evalResult.score = Math.max(20, Math.min(98, evalResult.score))
+    const clampScore = (value: unknown) => {
+      if (typeof value !== 'number' || Number.isNaN(value)) {
+        return 0
+      }
+
+      const rounded = Math.round(value)
+      return Math.max(20, Math.min(98, rounded))
+    }
+
+    const cargoScoreRaw = evalResult?.荷台?.score
+    const toolScoreRaw = evalResult?.道具収納?.score
+    const cargoCommentRaw = evalResult?.荷台?.comment
+    const toolCommentRaw = evalResult?.道具収納?.comment
+
+    const cargoScore = clampScore(cargoScoreRaw)
+    const toolScore = clampScore(toolScoreRaw)
+    const validScores = [cargoScoreRaw, toolScoreRaw].filter((value): value is number =>
+      typeof value === 'number' && !Number.isNaN(value)
+    )
+
+    const averageScoreRaw = validScores.length
+      ? validScores.reduce((acc, value) => acc + value, 0) / validScores.length
+      : 0
+
+    let averageScore = Math.round(averageScoreRaw)
+    if (averageScore > 0) {
+      averageScore = Math.max(20, Math.min(98, averageScore))
+    }
+
+    const cargoComment = typeof cargoCommentRaw === 'string' ? cargoCommentRaw : ''
+    const toolComment = typeof toolCommentRaw === 'string' ? toolCommentRaw : ''
+
+    const combinedComment = `【荷台】\n評価: ${cargoScore || 'N/A'}点\n${cargoComment}\n\n【道具収納】\n評価: ${toolScore || 'N/A'}点\n${toolComment}`
+
+    const processedResult = {
+      score: averageScore,
+      comment: combinedComment,
+      breakdown: {
+        cargo: { score: cargoScore, comment: cargoComment },
+        toolbox: { score: toolScore, comment: toolComment },
+      },
     }
 
     const payload = {
       valid: true,
-      score: typeof evalResult.score === 'number' ? evalResult.score : 0,
-      comment:
-        typeof evalResult.comment === 'string'
-          ? evalResult.comment
-          : '評価できませんでした',
+      score: processedResult.score,
+      comment: processedResult.comment || '評価できませんでした',
       category: verifyResult.category ?? null,
       reason: verifyResult.reason ?? null,
+      details: processedResult.breakdown,
     }
 
     console.log('[evaluate] Final result:', payload)

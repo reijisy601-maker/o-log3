@@ -3,6 +3,14 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
+    const formData = await request.formData()
+    const file = formData.get('file') as File | null
+    const imageType = formData.get('type') as string | null
+
+    if (!file || !imageType) {
+      return NextResponse.json({ error: 'ファイルと種別が必要です' }, { status: 400 })
+    }
+
     const supabase = await createClient()
 
     const {
@@ -12,14 +20,6 @@ export async function POST(request: Request) {
 
     if (authError || !user) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
-    }
-
-    const formData = await request.formData()
-    const file = formData.get('file') as File | null
-    const imageType = formData.get('type') as string | null
-
-    if (!file || !imageType) {
-      return NextResponse.json({ error: 'ファイルと種別が必要です' }, { status: 400 })
     }
 
     if (file.size > 10 * 1024 * 1024) {
@@ -33,33 +33,36 @@ export async function POST(request: Request) {
     const fileExt = file.name.split('.').pop() ?? 'jpg'
     const fileName = `${user.id}/${yearMonth}/${imageType}.${fileExt}`
 
-    const { data, error } = await supabase.storage
+    console.log(`[upload] Uploading ${imageType} image:`, fileName)
+
+    const { error: uploadError } = await supabase.storage
       .from('submissions')
       .upload(fileName, file, {
+        cacheControl: '3600',
         upsert: true,
         contentType: file.type,
       })
 
-    if (error) {
-      console.error('Upload error:', error)
-      return NextResponse.json(
-        { error: 'アップロードに失敗しました' },
-        { status: 500 }
-      )
+    if (uploadError) {
+      console.error('[upload] Upload error:', uploadError)
+      throw uploadError
     }
 
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from('submissions').getPublicUrl(fileName)
+    const { data } = supabase.storage.from('submissions').getPublicUrl(fileName)
+
+    console.log('[upload] Public URL:', data.publicUrl)
 
     return NextResponse.json({
-      url: publicUrl,
-      path: data.path,
+      url: data.publicUrl,
+      path: fileName,
     })
   } catch (error) {
-    console.error('Unexpected error:', error)
+    console.error('[upload] Error:', error)
     return NextResponse.json(
-      { error: 'サーバーエラーが発生しました' },
+      {
+        error: 'アップロードに失敗しました',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     )
   }

@@ -18,11 +18,7 @@ const VERIFY_PROMPT = `画像を確認し、以下のどちらに該当するか
 {"isValid": true, "category": "車両の荷物収納スペース", "reason": "判定理由（簡潔に）"}`
 
 const EVALUATE_PROMPT = `あなたは作業環境の整理整頓状態を評価する専門家です。
-以下の2枚の写真から、作業環境の状態を客観的に評価してください。
-
-# 評価対象
-1枚目: 荷台・ラゲッジスペース
-2枚目: メイン道具収納（道具箱など）
+提供された画像から、作業環境の状態を客観的に評価してください。
 
 # 基本方針
 これは実際に現場で使用される車両・道具です。完璧な整理整頓ではなく、
@@ -34,16 +30,16 @@ const EVALUATE_PROMPT = `あなたは作業環境の整理整頓状態を評価�
 - 実用性（すぐ取り出せる配置）も考慮する
 - 完璧すぎる状態を求めない（現実的な評価）
 
-# 評価対象ごとの視点（重要: それぞれ異なる視点で評価する）
+# 評価視点（画像の内容に応じて適切に判断）
 
-## 荷台・ラゲッジスペースの評価視点
+## 車両の荷物スペース（ラゲッジ・荷台）の場合
 - 外部から見た時の印象（最重要）
 - 敷物・シート・カバーによる目隠し工夫
 - 大型道具・資材の配置と固定
 - スペースの有効活用
 - 汚れ・ゴミの管理状況
 
-## 道具収納の評価視点
+## 道具収納（工具箱・ツールボックス）の場合
 - 道具の取り出しやすさ（実用性が最重要）
 - カテゴリー分類の明確さ
 - 収納ケース・仕切り・ボックスの活用
@@ -79,28 +75,22 @@ const EVALUATE_PROMPT = `あなたは作業環境の整理整頓状態を評価�
 - 20-39点: かなりの改善が必要
 
 # コメント作成の原則（重要）
-1. **荷台と道具収納で異なる視点からコメントする**
-2. **画像から実際に観察できる具体的な要素を述べる**
-3. **同じ表現・フレーズを繰り返さない**
-4. **一般論ではなく、この画像特有の状態を評価する**
-5. 前向きで建設的なトーン
-6. 改善提案は「さらに良くするなら」という表現で
-7. 上から目線を避け、共感的に
+1. **画像から実際に観察できる具体的な要素を述べる**
+2. **一般論ではなく、この画像特有の状態を評価する**
+3. **敷物がある場合は「見た目への配慮」として肯定的に触れる**
+4. 前向きで建設的なトーン
+5. 改善提案は「さらに良くするなら」という表現で
+6. 上から目線を避け、共感的に
+7. 具体的で多様な表現を心がける
 
 # 出力形式
 JSON形式で以下を出力：
 {
-  "荷台": {
-    "score": [20-98の整数],
-    "comment": "[150-200文字程度。荷台特有の視点（外から見た印象、敷物の工夫など）で評価]"
-  },
-  "道具収納": {
-    "score": [20-98の整数],
-    "comment": "[150-200文字程度。道具収納特有の視点（取り出しやすさ、分類など）で評価]"
-  }
+  "score": [20-98の整数],
+  "comment": "[150-200文字程度。画像の内容に基づいた具体的な評価コメント]"
 }
 
-それでは、画像を観察し、荷台と道具収納それぞれに固有の評価を行ってください。`;
+それでは、画像を観察し、具体的で建設的な評価を行ってください。`;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -272,56 +262,16 @@ export async function POST(request: Request) {
       )
     }
 
-    const clampScore = (value: unknown) => {
-      if (typeof value !== 'number' || Number.isNaN(value)) {
-        return 0
-      }
-
-      const rounded = Math.round(value)
-      return Math.max(20, Math.min(98, rounded))
-    }
-
-    const cargoScoreRaw = evalResult?.荷台?.score
-    const toolScoreRaw = evalResult?.道具収納?.score
-    const cargoCommentRaw = evalResult?.荷台?.comment
-    const toolCommentRaw = evalResult?.道具収納?.comment
-
-    const cargoScore = clampScore(cargoScoreRaw)
-    const toolScore = clampScore(toolScoreRaw)
-    const validScores = [cargoScoreRaw, toolScoreRaw].filter((value): value is number =>
-      typeof value === 'number' && !Number.isNaN(value)
-    )
-
-    const averageScoreRaw = validScores.length
-      ? validScores.reduce((acc, value) => acc + value, 0) / validScores.length
-      : 0
-
-    let averageScore = Math.round(averageScoreRaw)
-    if (averageScore > 0) {
-      averageScore = Math.max(20, Math.min(98, averageScore))
-    }
-
-    const cargoComment = typeof cargoCommentRaw === 'string' ? cargoCommentRaw : ''
-    const toolComment = typeof toolCommentRaw === 'string' ? toolCommentRaw : ''
-
-    const combinedComment = `【荷台】\n評価: ${cargoScore || 'N/A'}点\n${cargoComment}\n\n【道具収納】\n評価: ${toolScore || 'N/A'}点\n${toolComment}`
-
-    const processedResult = {
-      score: averageScore,
-      comment: combinedComment,
-      breakdown: {
-        cargo: { score: cargoScore, comment: cargoComment },
-        toolbox: { score: toolScore, comment: toolComment },
-      },
+    if (typeof evalResult.score === 'number') {
+      evalResult.score = Math.max(20, Math.min(98, evalResult.score))
     }
 
     const payload = {
       valid: true,
-      score: processedResult.score,
-      comment: processedResult.comment || '評価できませんでした',
+      score: typeof evalResult.score === 'number' ? evalResult.score : 0,
+      comment: typeof evalResult.comment === 'string' ? evalResult.comment : '',
       category: verifyResult.category ?? null,
       reason: verifyResult.reason ?? null,
-      details: processedResult.breakdown,
     }
 
     console.log('[evaluate] Final result:', payload)

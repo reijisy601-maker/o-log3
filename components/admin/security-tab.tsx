@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
+import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import {
   AlertCircle,
@@ -25,6 +26,8 @@ const DOMAIN_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z
 
 export default function SecurityTab() {
   const [allowedDomains, setAllowedDomains] = useState<string[]>([])
+  const [whitelistedEmails, setWhitelistedEmails] = useState<string[]>([])
+  const [blacklistedEmails, setBlacklistedEmails] = useState<string[]>([])
   const [registrationCode, setRegistrationCode] = useState('')
   const [newDomain, setNewDomain] = useState('')
   const [showCode, setShowCode] = useState(false)
@@ -59,6 +62,8 @@ export default function SecurityTab() {
       const data = await response.json()
 
       setAllowedDomains((data.allowed_domains as string[]) ?? [])
+      setWhitelistedEmails((data.whitelisted_emails as string[]) ?? [])
+      setBlacklistedEmails((data.blacklisted_emails as string[]) ?? [])
       setRegistrationCode((data.registration_code as string) ?? '')
     } catch (error) {
       console.error('Failed to load security settings:', error)
@@ -131,6 +136,8 @@ export default function SecurityTab() {
         body: JSON.stringify({
           allowed_domains: allowedDomains,
           registration_code: registrationCode.trim(),
+          whitelisted_emails: whitelistedEmails,
+          blacklisted_emails: blacklistedEmails,
         }),
       })
 
@@ -241,6 +248,72 @@ export default function SecurityTab() {
               <AlertDescription>{domainError}</AlertDescription>
             </Alert>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="border border-gray-200 bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="size-5" />
+            例外許可メールアドレス
+          </CardTitle>
+          <CardDescription>ドメイン制限を無視して Magic Link を送信できるメールアドレスを設定します。</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            id="whitelisted-emails"
+            placeholder="admin@example.com\nmanager@personal.com"
+            value={whitelistedEmails.join('\n')}
+            onChange={(event) =>
+              setWhitelistedEmails(
+                event.target.value
+                  .split('\n')
+                  .map((email) => email.trim())
+                  .filter(Boolean)
+              )
+            }
+            rows={4}
+            disabled={isSaving}
+          />
+          <p className="text-xs text-muted-foreground">
+            ドメイン制限を超えてログインを許可したいメールアドレスを 1 行につき 1 件で入力してください。
+          </p>
+          <p className="text-xs text-blue-600">
+            💡 管理者や取引先など、特別なケース向けにご利用ください。
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-gray-200 bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="size-5 text-red-500" />
+            拒否メールアドレス
+          </CardTitle>
+          <CardDescription>登録・ログインを拒否するメールアドレスを管理します。</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            id="blacklisted-emails"
+            placeholder="spam@example.com\nblocked@domain.com"
+            value={blacklistedEmails.join('\n')}
+            onChange={(event) =>
+              setBlacklistedEmails(
+                event.target.value
+                  .split('\n')
+                  .map((email) => email.trim())
+                  .filter(Boolean)
+              )
+            }
+            rows={4}
+            disabled={isSaving}
+          />
+          <p className="text-xs text-muted-foreground">
+            アクセスさせたくないメールアドレスを 1 行につき 1 件で入力してください。
+          </p>
+          <p className="text-xs text-red-600">
+            ⚠️ 悪質なユーザーや退職者などのアクセス遮断に利用できます。
+          </p>
         </CardContent>
       </Card>
 

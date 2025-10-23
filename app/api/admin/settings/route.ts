@@ -10,6 +10,8 @@ type AdminCheckResult =
 type SettingsPayload = {
   allowed_domains?: string[]
   registration_code?: string
+  whitelisted_emails?: string[]
+  blacklisted_emails?: string[]
 }
 
 const SECURITY_SETTINGS_ID = 1
@@ -64,6 +66,30 @@ function validatePayload(payload: SettingsPayload) {
     }
   }
 
+  if (payload.whitelisted_emails !== undefined) {
+    if (!Array.isArray(payload.whitelisted_emails)) {
+      return 'whitelisted_emails must be an array'
+    }
+
+    for (const email of payload.whitelisted_emails) {
+      if (typeof email !== 'string' || !email.includes('@')) {
+        return `Invalid email format in whitelist: ${email}`
+      }
+    }
+  }
+
+  if (payload.blacklisted_emails !== undefined) {
+    if (!Array.isArray(payload.blacklisted_emails)) {
+      return 'blacklisted_emails must be an array'
+    }
+
+    for (const email of payload.blacklisted_emails) {
+      if (typeof email !== 'string' || !email.includes('@')) {
+        return `Invalid email format in blacklist: ${email}`
+      }
+    }
+  }
+
   return null
 }
 
@@ -78,7 +104,7 @@ export async function GET() {
     const adminClient = createServiceRoleClient()
     const { data, error } = await adminClient
       .from('security_settings')
-      .select('allowed_domains, registration_code, updated_at')
+      .select('allowed_domains, registration_code, whitelisted_emails, blacklisted_emails, updated_at')
       .eq('id', SECURITY_SETTINGS_ID)
       .single()
 
@@ -98,6 +124,8 @@ export async function GET() {
     return NextResponse.json({
       allowed_domains: (data.allowed_domains as string[]) ?? [],
       registration_code: (data.registration_code as string) ?? '',
+      whitelisted_emails: (data.whitelisted_emails as string[]) ?? [],
+      blacklisted_emails: (data.blacklisted_emails as string[]) ?? [],
       updated_at: data.updated_at as string,
     })
   } catch (error) {
@@ -128,7 +156,12 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: false, error: validationError }, { status: 400 })
   }
 
-  if (payload.allowed_domains === undefined && payload.registration_code === undefined) {
+  if (
+    payload.allowed_domains === undefined &&
+    payload.registration_code === undefined &&
+    payload.whitelisted_emails === undefined &&
+    payload.blacklisted_emails === undefined
+  ) {
     return NextResponse.json({ success: false, error: '更新対象が指定されていません' }, { status: 400 })
   }
 
@@ -147,11 +180,19 @@ export async function PUT(request: Request) {
       updatePayload.registration_code = payload.registration_code.trim()
     }
 
+    if (payload.whitelisted_emails !== undefined) {
+      updatePayload.whitelisted_emails = payload.whitelisted_emails
+    }
+
+    if (payload.blacklisted_emails !== undefined) {
+      updatePayload.blacklisted_emails = payload.blacklisted_emails
+    }
+
     const { data, error } = await adminClient
       .from('security_settings')
       .update(updatePayload)
       .eq('id', SECURITY_SETTINGS_ID)
-      .select('allowed_domains, registration_code, updated_at')
+      .select('allowed_domains, registration_code, whitelisted_emails, blacklisted_emails, updated_at')
       .single()
 
     if (error) {
@@ -168,6 +209,8 @@ export async function PUT(request: Request) {
       settings: {
         allowed_domains: (data.allowed_domains as string[]) ?? [],
         registration_code: (data.registration_code as string) ?? '',
+        whitelisted_emails: (data.whitelisted_emails as string[]) ?? [],
+        blacklisted_emails: (data.blacklisted_emails as string[]) ?? [],
         updated_at: data.updated_at as string,
       },
     })

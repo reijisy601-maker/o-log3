@@ -70,11 +70,12 @@ export default function LoginPage() {
 
         if (shouldSave) {
           saveEmail(email)
+          // メールアドレスは保存されているためクリアしない
         } else {
           clearSavedEmail()
+          setEmail('')
         }
 
-        setEmail('')
         setCode('')
       } else {
         if (mode === 'register' && data.error?.includes('認証コード')) {

@@ -402,28 +402,6 @@ const [isCompressing, setIsCompressing] = useState(false)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <span className="text-xl">📸</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-blue-900">
-                        必ずカメラで今撮影した写真を使用してください
-                      </p>
-                      <p className="text-xs text-blue-700 mt-1">
-                        古い写真や他の場所で撮影した写真は使用しないでください
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-lg">🖼️</span>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-600">
-                        対応形式：<span className="font-semibold">JPEG, PNG</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <ImageUploadCard
                     title="車両の荷物スペース"
@@ -445,14 +423,30 @@ const [isCompressing, setIsCompressing] = useState(false)
                   />
                 </div>
 
-                <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4 text-sm text-indigo-900">
-                  <p className="font-medium">📸 アップロード前に自動で最適化します</p>
-                  <p className="mt-1 text-xs sm:text-sm text-indigo-800">
-                    最大ファイルサイズ: 10MB / 圧縮後は約1〜2MB程度に軽量化されます。
-                    画像のアップロードには時間がかかる場合があります。
-                  </p>
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-base">📸</span>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-700 font-medium">アップロード前に自動で最適化します</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          最大ファイルサイズ: 10MB / 圧縮後は約1〜2MB程度に軽量化されます
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2">
+                      <span className="text-base">🖼️</span>
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-600">
+                          対応形式：<span className="font-semibold">JPEG, PNG</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {isCompressing && (
-                    <p className="mt-2 text-sm font-medium text-purple-600 animate-pulse">
+                    <p className="mt-3 text-sm font-medium text-purple-600 animate-pulse">
                       🔄 画像を最適化中...
                     </p>
                   )}

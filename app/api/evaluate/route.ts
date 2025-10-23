@@ -17,51 +17,90 @@ const VERIFY_PROMPT = `画像を確認し、以下のどちらに該当するか
 次のJSONのみ返してください（他の文章は一切含めないでください）。
 {"isValid": true, "category": "車両の荷物収納スペース", "reason": "判定理由（簡潔に）"}`
 
-const EVALUATE_PROMPT = `あなたは整理整頓のプロフェッショナルです。この画像を「顧客に見られた時の第一印象」という観点から評価してください。
+const EVALUATE_PROMPT = `あなたは作業環境の整理整頓状態を評価する専門家です。
+以下の2枚の写真から、作業環境の状態を客観的に評価してください。
 
-評価の前提:
-- 現場で使う道具であるため、多少の埃や使用感は許容範囲
-- 完璧を求めるのではなく、「プロとして見せられる状態か」を判断
-- 整理整頓の意識を高めることが目的
+# 評価対象
+1枚目: 荷台・ラゲッジスペース
+2枚目: メイン道具収納（道具箱など）
 
-評価基準:
-1. 第一印象（40%）
-   - 顧客が見た時に安心感・信頼感を持てるか
-   - パッと見たときの整然さ
-   - プロフェッショナルな印象を与えるか
+# 基本方針
+これは実際に現場で使用される車両・道具です。完璧な整理整頓ではなく、
+「外から見た時の印象」と「実用性とのバランス」を重視してください。
 
-2. 整理整頓度（35%）
-   - 物が分類・整列されているか
-   - 詰め込みすぎていないか（スマートさ）
-   - 必要な物がすぐに取り出せそうか
+## 重要な評価原則
+- 敷物・カバー類で隠している = 見た目への配慮として肯定的に評価
+- 「ごちゃごちゃして見えない工夫」は高く評価する
+- 実用性（すぐ取り出せる配置）も考慮する
+- 完璧すぎる状態を求めない（現実的な評価）
 
-3. 清潔感（25%）
-   - 明らかな汚れやゴミがないか
-   - メンテナンスが行き届いているか
-   - 使用感はあっても清潔に保たれているか
+# 評価対象ごとの視点（重要: それぞれ異なる視点で評価する）
 
-スコア指南:
-- 90-98点: 卓越。顧客に自信を持って見せられる状態
-- 80-89点: 良好。概ね整理されているが、さらに改善できる
-- 70-79点: 標準。最低限の基準は満たすが、もっと良くできる
-- 60-69点: 改善必要。顧客に見せるには不十分な箇所がある
-- 50-59点: 明確な問題あり。早急な改善が必要
-- 20-49点: 深刻な問題。プロとして不適切
+## 荷台・ラゲッジスペースの評価視点
+- 外部から見た時の印象（最重要）
+- 敷物・シート・カバーによる目隠し工夫
+- 大型道具・資材の配置と固定
+- スペースの有効活用
+- 汚れ・ゴミの管理状況
 
-評価のポイント:
-- 収納ケースで整理されていても、「詰め込みすぎ」「雑然としている」印象があれば減点
-- 一見綺麗でも、「もう一工夫できる」箇所があれば指摘
-- 現場特有の使用感（多少の埃など）は大きく減点しない
-- 顧客に見せて「この人に任せて大丈夫」と思えるかを基準に判断
+## 道具収納の評価視点
+- 道具の取り出しやすさ（実用性が最重要）
+- カテゴリー分類の明確さ
+- 収納ケース・仕切り・ボックスの活用
+- 道具自体のメンテナンス・手入れ状態
+- 使用頻度に応じた合理的な配置
 
-コメント方針:
-- 1-2文で簡潔に
-- 良い点を認めつつ、改善点を具体的に指摘
-- 「もう少し〜すると良い」という建設的なトーンで
-- 現場作業であることを理解した上でのアドバイス
+# 評価基準（各項目を総合的に判断）
 
-次のJSONのみ返してください（他の文章は一切含めないでください）。
-{"score": 80, "comment": "収納ケースで整理されていますが、やや詰め込みすぎの印象です。上部の布類を整理すると、よりスマートな印象になります。"}`
+## 1. 第一印象（40%）
+- パッと見た時の清潔感・整然とした印象
+- 見せ方の工夫（敷物、カバー、色の統一など）
+- 外部から見た時の安心感
+
+## 2. 整理整頓度（35%）
+- 物の配置の合理性
+- 空間の有効活用
+- 分類・グルーピング
+
+## 3. 清潔感（25%）
+- 汚れ・ゴミの有無
+- メンテナンス状態
+
+# スコアリング
+- 範囲: 20-98点
+- 現場で実際に使う道具・車両であることを考慮
+- 極端に低い点数（20点台）や完璧な点数（95点以上）は避ける
+
+# スコア配分の目安
+- 85-98点: 見た目と実用性のバランスが素晴らしい
+- 70-84点: 良好な状態、いくつか改善ポイントあり
+- 55-69点: 普通の状態、改善の余地あり
+- 40-54点: 改善が必要
+- 20-39点: かなりの改善が必要
+
+# コメント作成の原則（重要）
+1. **荷台と道具収納で異なる視点からコメントする**
+2. **画像から実際に観察できる具体的な要素を述べる**
+3. **同じ表現・フレーズを繰り返さない**
+4. **一般論ではなく、この画像特有の状態を評価する**
+5. 前向きで建設的なトーン
+6. 改善提案は「さらに良くするなら」という表現で
+7. 上から目線を避け、共感的に
+
+# 出力形式
+JSON形式で以下を出力：
+{
+  "荷台": {
+    "score": [20-98の整数],
+    "comment": "[150-200文字程度。荷台特有の視点（外から見た印象、敷物の工夫など）で評価]"
+  },
+  "道具収納": {
+    "score": [20-98の整数],
+    "comment": "[150-200文字程度。道具収納特有の視点（取り出しやすさ、分類など）で評価]"
+  }
+}
+
+それでは、画像を観察し、荷台と道具収納それぞれに固有の評価を行ってください。`;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -233,19 +272,56 @@ export async function POST(request: Request) {
       )
     }
 
-    if (typeof evalResult.score === 'number') {
-      evalResult.score = Math.max(20, Math.min(98, evalResult.score))
+    const clampScore = (value: unknown) => {
+      if (typeof value !== 'number' || Number.isNaN(value)) {
+        return 0
+      }
+
+      const rounded = Math.round(value)
+      return Math.max(20, Math.min(98, rounded))
+    }
+
+    const cargoScoreRaw = evalResult?.荷台?.score
+    const toolScoreRaw = evalResult?.道具収納?.score
+    const cargoCommentRaw = evalResult?.荷台?.comment
+    const toolCommentRaw = evalResult?.道具収納?.comment
+
+    const cargoScore = clampScore(cargoScoreRaw)
+    const toolScore = clampScore(toolScoreRaw)
+    const validScores = [cargoScoreRaw, toolScoreRaw].filter((value): value is number =>
+      typeof value === 'number' && !Number.isNaN(value)
+    )
+
+    const averageScoreRaw = validScores.length
+      ? validScores.reduce((acc, value) => acc + value, 0) / validScores.length
+      : 0
+
+    let averageScore = Math.round(averageScoreRaw)
+    if (averageScore > 0) {
+      averageScore = Math.max(20, Math.min(98, averageScore))
+    }
+
+    const cargoComment = typeof cargoCommentRaw === 'string' ? cargoCommentRaw : ''
+    const toolComment = typeof toolCommentRaw === 'string' ? toolCommentRaw : ''
+
+    const combinedComment = `【荷台】\n評価: ${cargoScore || 'N/A'}点\n${cargoComment}\n\n【道具収納】\n評価: ${toolScore || 'N/A'}点\n${toolComment}`
+
+    const processedResult = {
+      score: averageScore,
+      comment: combinedComment,
+      breakdown: {
+        cargo: { score: cargoScore, comment: cargoComment },
+        toolbox: { score: toolScore, comment: toolComment },
+      },
     }
 
     const payload = {
       valid: true,
-      score: typeof evalResult.score === 'number' ? evalResult.score : 0,
-      comment:
-        typeof evalResult.comment === 'string'
-          ? evalResult.comment
-          : '評価できませんでした',
+      score: processedResult.score,
+      comment: processedResult.comment || '評価できませんでした',
       category: verifyResult.category ?? null,
       reason: verifyResult.reason ?? null,
+      details: processedResult.breakdown,
     }
 
     console.log('[evaluate] Final result:', payload)

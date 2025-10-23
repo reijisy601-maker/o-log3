@@ -185,13 +185,6 @@ export default function LoginPage() {
               </div>
             )}
 
-            {!canSend && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <p className="text-sm text-blue-600 font-medium">⏱️ 再送信まで待機中</p>
-                <p className="text-xs text-blue-500">{remainingSeconds}秒後に再送信できます</p>
-              </div>
-            )}
-
             <Button
               type="submit"
               className="w-full h-12 text-base"
@@ -202,12 +195,29 @@ export default function LoginPage() {
                   <span className="animate-spin mr-2">⏳</span>
                   送信中...
                 </>
+              ) : isLocked ? (
+                <>
+                  🔒 {Math.floor(remainingTime / 60)}分{remainingTime % 60}秒後に再試行可能
+                </>
               ) : !canSend ? (
                 <>⏱️ {remainingSeconds}秒後に送信可能</>
               ) : (
                 <>マジックリンクを送信 🚀</>
               )}
             </Button>
+
+            <div className="text-center">
+              {isLocked && (
+                <p className="mt-2 text-xs text-gray-500">
+                  認証コードを3回間違えたため、一時的にロックされています
+                </p>
+              )}
+              {!isLocked && !canSend && (
+                <p className="mt-2 text-xs text-gray-500">
+                  短時間に複数回の送信を防ぐため、待機時間が設定されています
+                </p>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>

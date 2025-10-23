@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
 
+const MAX_COMMENT_LENGTH = 5000
+const PAYLOAD_SIZE_LIMIT_BYTES = 1024 * 1024
+
 const VERIFY_PROMPT = `画像を確認し、以下のどちらに該当するか判断してください。該当しない場合は isValid を false にしてください。
 
 カテゴリ1: 車両の荷物収納スペース
@@ -96,6 +99,9 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+const sanitizeComment = (value: unknown) =>
+  typeof value === 'string' ? value.slice(0, MAX_COMMENT_LENGTH) : ''
+
 const extractJson = (input: string, label: string) => {
   if (!input || input.trim() === '') {
     console.error(`[evaluate] Empty response from OpenAI for ${label}`)
@@ -104,16 +110,48 @@ const extractJson = (input: string, label: string) => {
 
   const jsonMatch = input.match(/\{[\s\S]*\}/)
   if (!jsonMatch) {
-    console.error(`[evaluate] No JSON found in response for ${label}:`, input)
+    console.error(`[evaluate] No JSON found in response for ${label}`)
     return null
   }
 
+  let parsed: unknown
   try {
-    return JSON.parse(jsonMatch[0])
+    parsed = JSON.parse(jsonMatch[0])
   } catch (error) {
-    console.error(`[evaluate] Failed to parse ${label}:`, jsonMatch[0], error)
+    console.error(`[evaluate] Failed to parse ${label}`, error)
     return null
   }
+
+  if (label === 'evaluation result') {
+    if (typeof parsed !== 'object' || parsed === null) {
+      return { score: null, comment: '' }
+    }
+
+    const record = parsed as Record<string, unknown>
+    let score: number | null = null
+
+    const scoreCandidate = record.score ?? (record as { 荷台?: { score?: unknown }; 道具収納?: { score?: unknown } }).荷台?.score ??
+      (record as { 荷台?: { score?: unknown }; 道具収納?: { score?: unknown } }).道具収納?.score
+
+    if (typeof scoreCandidate === 'number' && Number.isFinite(scoreCandidate)) {
+      score = scoreCandidate
+    } else if (typeof scoreCandidate === 'string') {
+      const numeric = Number(scoreCandidate)
+      if (!Number.isNaN(numeric)) {
+        score = numeric
+      }
+    }
+
+    let comment = sanitizeComment(record.comment)
+    if (!comment) {
+      const nested = record as { 荷台?: { comment?: unknown }; 道具収納?: { comment?: unknown } }
+      comment = sanitizeComment(nested.荷台?.comment) || sanitizeComment(nested.道具収納?.comment)
+    }
+
+    return { score, comment }
+  }
+
+  return parsed
 }
 
 const buildVerificationPrompt = (imageUrl: string) => [
@@ -203,7 +241,10 @@ export async function POST(request: Request) {
     })
 
     const verifyRaw = verifyResponse.choices[0]?.message.content ?? ''
-    console.log(`[evaluate] ${imageType} raw verification response:`, verifyRaw)
+    if (verifyRaw) {
+      const preview = verifyRaw.length > 200 ? `${verifyRaw.slice(0, 200)}…` : verifyRaw
+      console.log(`[evaluate] ${imageType} verification preview:`, preview)
+    }
     const verifyResult = extractJson(verifyRaw, 'verification result')
 
     if (!verifyResult || verifyResult.isValid !== true) {
@@ -243,7 +284,10 @@ export async function POST(request: Request) {
     })
 
     const evalRaw = evaluateResponse.choices[0]?.message.content ?? ''
-    console.log(`[evaluate] ${imageType} raw evaluation response:`, evalRaw)
+    if (evalRaw) {
+      const preview = evalRaw.length > 200 ? `${evalRaw.slice(0, 200)}…` : evalRaw
+      console.log(`[evaluate] ${imageType} evaluation preview:`, preview)
+    }
     const evalResult = extractJson(evalRaw, 'evaluation result')
 
     if (!evalResult) {
@@ -274,9 +318,34 @@ export async function POST(request: Request) {
       reason: verifyResult.reason ?? null,
     }
 
-    console.log('[evaluate] Final result:', payload)
+    console.log('[evaluate] Final result summary:', {
+      score: payload.score,
+      commentLength: payload.comment.length,
+    })
 
-    return NextResponse.json(payload)
+    const payloadJson = JSON.stringify(payload)
+    const payloadSize = new TextEncoder().encode(payloadJson).length
+
+    if (payloadSize > PAYLOAD_SIZE_LIMIT_BYTES) {
+      console.error('[evaluate] Payload exceeds size limit', {
+        payloadSize,
+        limit: PAYLOAD_SIZE_LIMIT_BYTES,
+      })
+
+      return NextResponse.json(
+        {
+          valid: false,
+          error: '評価結果のサイズが大きすぎます。時間をおいて再試行してください。',
+          suggestions: ['画像の解像度を下げて再度お試しください', '時間をおいてから再評価してください'],
+        },
+        { status: 502 }
+      )
+    }
+
+    return new NextResponse(payloadJson, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
   } catch (error: unknown) {
     console.error('[evaluate] Error:', error)
 

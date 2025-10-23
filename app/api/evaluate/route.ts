@@ -2,6 +2,17 @@ import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/lib/supabase/server'
 
+interface VerificationResult {
+  isValid: boolean
+  category?: string
+  reason?: string
+}
+
+interface EvaluationResult {
+  score: number | null
+  comment: string
+}
+
 const VERIFY_PROMPT = `画像を確認し、以下のどちらに該当するか判断してください。該当しない場合は isValid を false にしてください。
 
 カテゴリ1: 車両の荷物収納スペース
@@ -96,7 +107,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-const extractJson = (input: string, label: string) => {
+const extractJson = (
+  input: string,
+  label: string
+): VerificationResult | EvaluationResult | null => {
   if (!input || input.trim() === '') {
     console.error(`[evaluate] Empty response from OpenAI for ${label}`)
     return null
@@ -109,7 +123,32 @@ const extractJson = (input: string, label: string) => {
   }
 
   try {
-    return JSON.parse(jsonMatch[0])
+    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>
+
+    if (typeof parsed !== 'object' || parsed === null) {
+      console.error(`[evaluate] Parsed ${label} is not an object:`, parsed)
+      return null
+    }
+
+    if ('score' in parsed || 'comment' in parsed) {
+      const score =
+        typeof parsed.score === 'number' ? parsed.score : null
+      const comment =
+        typeof parsed.comment === 'string' ? parsed.comment : ''
+
+      if (score === null && comment === '') {
+        return { score: null, comment: '' } as EvaluationResult
+      }
+
+      return { score, comment } as EvaluationResult
+    }
+
+    if ('isValid' in parsed) {
+      return parsed as VerificationResult
+    }
+
+    console.error(`[evaluate] Parsed ${label} has unexpected shape:`, parsed)
+    return null
   } catch (error) {
     console.error(`[evaluate] Failed to parse ${label}:`, jsonMatch[0], error)
     return null
@@ -204,7 +243,10 @@ export async function POST(request: Request) {
 
     const verifyRaw = verifyResponse.choices[0]?.message.content ?? ''
     console.log(`[evaluate] ${imageType} raw verification response:`, verifyRaw)
-    const verifyResult = extractJson(verifyRaw, 'verification result')
+    const verifyResult = extractJson(
+      verifyRaw,
+      'verification result'
+    ) as VerificationResult | null
 
     if (!verifyResult || verifyResult.isValid !== true) {
       const targetLabel = imageType === 'luggage' ? '車両の荷物スペース' : '道具収納'
@@ -244,7 +286,10 @@ export async function POST(request: Request) {
 
     const evalRaw = evaluateResponse.choices[0]?.message.content ?? ''
     console.log(`[evaluate] ${imageType} raw evaluation response:`, evalRaw)
-    const evalResult = extractJson(evalRaw, 'evaluation result')
+    const evalResult = extractJson(
+      evalRaw,
+      'evaluation result'
+    ) as EvaluationResult | null
 
     if (!evalResult) {
       return NextResponse.json(

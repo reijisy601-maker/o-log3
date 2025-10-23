@@ -169,10 +169,22 @@ export default function LoginPage() {
             )}
 
             {isLocked && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600 font-medium">🔒 ロック中</p>
-                <p className="text-xs text-red-500">
-                  残り {Math.floor(remainingTime / 60)}分{remainingTime % 60}秒
+              <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🔒</span>
+                  <p className="text-sm text-red-600 font-semibold">アカウントがロックされています</p>
+                </div>
+                <p className="text-xs text-red-700">
+                  認証コードを3回間違えたため、一時的にロックされました
+                </p>
+                <div className="flex items-center justify-center gap-2 pt-1 pb-1">
+                  <span className="text-xl">⏰</span>
+                  <p className="text-lg text-red-600 font-mono font-bold">
+                    残り {Math.floor(remainingTime / 60)}:{String(remainingTime % 60).padStart(2, '0')}
+                  </p>
+                </div>
+                <p className="text-xs text-gray-600 pt-1 border-t border-red-100">
+                  💡 ロック解除後、正しい認証コードで再度お試しください
                 </p>
               </div>
             )}
@@ -182,13 +194,6 @@ export default function LoginPage() {
                 <p className="text-xs text-yellow-700">
                   ⚠️ 3回失敗すると5分間ロックされます（残り {Math.max(0, 3 - attempts)} 回）
                 </p>
-              </div>
-            )}
-
-            {!canSend && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <p className="text-sm text-blue-600 font-medium">⏱️ 再送信まで待機中</p>
-                <p className="text-xs text-blue-500">{remainingSeconds}秒後に再送信できます</p>
               </div>
             )}
 
@@ -202,12 +207,31 @@ export default function LoginPage() {
                   <span className="animate-spin mr-2">⏳</span>
                   送信中...
                 </>
+              ) : isLocked ? (
+                <>
+                  🔒 ロック中 ({Math.floor(remainingTime / 60)}分{remainingTime % 60}秒)
+                </>
               ) : !canSend ? (
-                <>⏱️ {remainingSeconds}秒後に送信可能</>
+                <>
+                  ⏱️ {remainingSeconds}秒後に送信可能
+                </>
               ) : (
                 <>マジックリンクを送信 🚀</>
               )}
             </Button>
+
+            <div className="text-center">
+              {!canSend && !isLocked && !loading && (
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 連続送信を防止するため、60秒間お待ちください
+                </p>
+              )}
+              {isLocked && (
+                <p className="text-xs text-red-500 mt-2">
+                  ⚠️ 認証コードを3回間違えたため、5分間ロックされています
+                </p>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>

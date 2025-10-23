@@ -111,8 +111,12 @@ const [isCompressing, setIsCompressing] = useState(false)
   }
 
   const handleImageSelect = async (type: 'luggage' | 'toolbox', file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('画像ファイルを選択してください')
+    const allowedTypes = ['image/jpeg', 'image/png']
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('アップロードできません', {
+        description: '❌ JPEG または PNG 形式の画像のみアップロード可能です',
+      })
       return
     }
 
@@ -398,6 +402,28 @@ const [isCompressing, setIsCompressing] = useState(false)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <span className="text-xl">📸</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-blue-900">
+                        必ずカメラで今撮影した写真を使用してください
+                      </p>
+                      <p className="text-xs text-blue-700 mt-1">
+                        古い写真や他の場所で撮影した写真は使用しないでください
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-lg">🖼️</span>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-600">
+                        対応形式：<span className="font-semibold">JPEG, PNG</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <ImageUploadCard
                     title="車両の荷物スペース"

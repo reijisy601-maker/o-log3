@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { useAuthLock } from '@/lib/hooks/useAuthLock'
 import { useMagicLinkRateLimit } from '@/lib/hooks/useMagicLinkRateLimit'
+import { useSavedEmail } from '@/lib/hooks/useSavedEmail'
 
 type Mode = 'login' | 'register'
 
@@ -17,6 +18,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const { isLocked, remainingTime, attempts, recordFailure, reset } = useAuthLock()
   const { canSend, remainingSeconds, recordSent } = useMagicLinkRateLimit()
+  const { savedEmail, shouldSave, setShouldSave, saveEmail, clearSavedEmail } = useSavedEmail()
+
+  useEffect(() => {
+    if (savedEmail) {
+      setEmail(savedEmail)
+    }
+  }, [savedEmail])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -59,6 +67,13 @@ export default function LoginPage() {
         toast.success(successMessage, {
           description: 'メールボックスを確認してください。60秒後に再送信できます',
         })
+
+        if (shouldSave) {
+          saveEmail(email)
+        } else {
+          clearSavedEmail()
+        }
+
         setEmail('')
         setCode('')
       } else {
@@ -133,7 +148,26 @@ export default function LoginPage() {
                 required
                 disabled={loading || isLocked}
                 className="h-12 text-base"
+                autoComplete="email"
               />
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="save-email"
+                  checked={shouldSave}
+                  onChange={(event) => {
+                    const checked = event.target.checked
+                    setShouldSave(checked)
+                    if (!checked) {
+                      clearSavedEmail()
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <label htmlFor="save-email" className="text-xs text-gray-600 cursor-pointer">
+                  このデバイスにメールアドレスを保存する
+                </label>
+              </div>
             </div>
 
             {mode === 'register' && (
@@ -169,10 +203,22 @@ export default function LoginPage() {
             )}
 
             {isLocked && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600 font-medium">🔒 ロック中</p>
-                <p className="text-xs text-red-500">
-                  残り {Math.floor(remainingTime / 60)}分{remainingTime % 60}秒
+              <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🔒</span>
+                  <p className="text-sm text-red-600 font-semibold">アカウントがロックされています</p>
+                </div>
+                <p className="text-xs text-red-700">
+                  認証コードを3回間違えたため、一時的にロックされました
+                </p>
+                <div className="flex items-center justify-center gap-2 pt-1 pb-1">
+                  <span className="text-xl">⏰</span>
+                  <p className="text-lg text-red-600 font-mono font-bold">
+                    残り {Math.floor(remainingTime / 60)}:{String(remainingTime % 60).padStart(2, '0')}
+                  </p>
+                </div>
+                <p className="text-xs text-gray-600 pt-1 border-t border-red-100">
+                  💡 ロック解除後、正しい認証コードで再度お試しください
                 </p>
               </div>
             )}
@@ -212,7 +258,7 @@ export default function LoginPage() {
                   認証コードを3回間違えたため、一時的にロックされています
                 </p>
               )}
-              {!isLocked && !canSend && (
+              {!isLocked && !canSend && !loading && (
                 <p className="mt-2 text-xs text-gray-500">
                   短時間に複数回の送信を防ぐため、待機時間が設定されています
                 </p>

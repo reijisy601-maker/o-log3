@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { useAuthLock } from '@/lib/hooks/useAuthLock'
+import { useMagicLinkRateLimit } from '@/lib/hooks/useMagicLinkRateLimit'
 
 type Mode = 'login' | 'register'
 
@@ -15,6 +16,7 @@ export default function LoginPage() {
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const { isLocked, remainingTime, attempts, recordFailure, reset } = useAuthLock()
+  const { canSend, remainingSeconds, recordSent } = useMagicLinkRateLimit()
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -22,6 +24,13 @@ export default function LoginPage() {
     if (isLocked) {
       toast.error('ロック中です', {
         description: `残り ${Math.floor(remainingTime / 60)}分${remainingTime % 60}秒`,
+      })
+      return
+    }
+
+    if (!canSend) {
+      toast.error('送信間隔が短すぎます', {
+        description: `${remainingSeconds}秒後に再送信できます`,
       })
       return
     }
@@ -42,12 +51,13 @@ export default function LoginPage() {
 
       if (response.ok) {
         reset()
+        recordSent()
         const successMessage = data.isExistingUser
           ? 'ログイン用Magic Linkを送信しました'
           : '新規登録用Magic Linkを送信しました。メールをご確認ください'
 
         toast.success(successMessage, {
-          description: 'メールボックスを確認してください',
+          description: 'メールボックスを確認してください。60秒後に再送信できます',
         })
         setEmail('')
         setCode('')
@@ -175,12 +185,25 @@ export default function LoginPage() {
               </div>
             )}
 
-            <Button type="submit" className="w-full h-12 text-base" disabled={loading || isLocked}>
+            {!canSend && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-600 font-medium">⏱️ 再送信まで待機中</p>
+                <p className="text-xs text-blue-500">{remainingSeconds}秒後に再送信できます</p>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full h-12 text-base"
+              disabled={loading || isLocked || !canSend}
+            >
               {loading ? (
                 <>
                   <span className="animate-spin mr-2">⏳</span>
                   送信中...
                 </>
+              ) : !canSend ? (
+                <>⏱️ {remainingSeconds}秒後に送信可能</>
               ) : (
                 <>マジックリンクを送信 🚀</>
               )}

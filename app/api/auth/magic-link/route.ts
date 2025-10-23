@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     log('=== security_settings取得試行 ===');
     const { data: settings, error: settingsError } = await supabaseAdmin
       .from('security_settings')
-      .select('new_user_auth_code, allowed_domains')
+      .select('new_user_auth_code, allowed_domains, whitelisted_emails, blacklisted_emails')
       .single();
 
     if (settingsError) {
@@ -58,6 +58,14 @@ export async function POST(request: Request) {
     }
 
     log('security_settings取得成功:', settings);
+
+    if (settings.blacklisted_emails && settings.blacklisted_emails.includes(email)) {
+      console.error('エラー: ブラックリストに含まれるメールアドレス');
+      return NextResponse.json(
+        { error: 'このメールアドレスは使用できません' },
+        { status: 403 }
+      );
+    }
 
     // 既存ユーザーチェック（修正: .maybeSingle()を使用）
     log('=== 既存ユーザーチェック ===');
@@ -137,21 +145,27 @@ export async function POST(request: Request) {
 
     log('✅ 認証コード検証成功');
 
-    // ドメイン検証
-    log('=== ドメイン検証 ===');
+    log('=== メールアドレス検証 ===');
     const emailDomain = email.split('@')[1];
     log('メールドメイン:', emailDomain);
-    log('許可ドメイン:', settings.allowed_domains);
 
-    if (!settings.allowed_domains.includes(emailDomain)) {
-      console.error('エラー: ドメインが許可リストにない');
-      return NextResponse.json(
-        { error: '許可されていないドメインです' },
-        { status: 403 }
-      );
+    const isWhitelisted = settings.whitelisted_emails?.includes(email) ?? false;
+
+    if (isWhitelisted) {
+      log('✅ ホワイトリストに含まれるため、ドメイン検証をスキップ');
+    } else {
+      log('許可ドメイン:', settings.allowed_domains);
+
+      if (!settings.allowed_domains.includes(emailDomain)) {
+        console.error('エラー: ドメインが許可リストにない');
+        return NextResponse.json(
+          { error: '許可されていないドメインです。管理者にお問い合わせください' },
+          { status: 403 }
+        );
+      }
+
+      log('✅ ドメイン検証成功');
     }
-
-    log('✅ ドメイン検証成功');
 
     // 新規登録用Magic Link送信
     log('=== 新規登録用Magic Link送信 ===');

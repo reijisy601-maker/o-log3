@@ -27,6 +27,13 @@ export default function ImageUploadCard({
 }: ImageUploadCardProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const handleRemove = () => {
+    onImageRemove()
+    if (inputRef.current) {
+      inputRef.current.value = ''
+    }
+  }
+
   const triggerFileDialog = () => {
     if (!disabled) {
       inputRef.current?.click()
@@ -74,14 +81,14 @@ export default function ImageUploadCard({
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png"
           onChange={handleFileChange}
           className="hidden"
           disabled={disabled}
         />
 
         {image ? (
-          <div className="relative group">
+          <div className="relative">
             <img
               src={image.preview}
               alt={title}
@@ -91,9 +98,9 @@ export default function ImageUploadCard({
               type="button"
               variant="destructive"
               size="icon"
-              onClick={onImageRemove}
+              onClick={handleRemove}
               disabled={disabled}
-              className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg"
+              className="absolute top-3 right-3 shadow-lg"
             >
               <X className="w-4 h-4" />
             </Button>

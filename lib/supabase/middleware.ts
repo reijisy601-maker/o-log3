@@ -15,10 +15,18 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
+          // クロスデバイス対応: Cookie オプションを明示的に設定
+          const cookieOptions: CookieOptions = {
+            ...options,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            path: '/',
+          }
+
           request.cookies.set({
             name,
             value,
-            ...options,
+            ...cookieOptions,
           })
           supabaseResponse = NextResponse.next({
             request,
@@ -26,14 +34,19 @@ export async function updateSession(request: NextRequest) {
           supabaseResponse.cookies.set({
             name,
             value,
-            ...options,
+            ...cookieOptions,
           })
         },
         remove(name: string, options: CookieOptions) {
+          const cookieOptions: CookieOptions = {
+            ...options,
+            path: '/',
+          }
+
           request.cookies.set({
             name,
             value: '',
-            ...options,
+            ...cookieOptions,
           })
           supabaseResponse = NextResponse.next({
             request,
@@ -41,18 +54,16 @@ export async function updateSession(request: NextRequest) {
           supabaseResponse.cookies.set({
             name,
             value: '',
-            ...options,
+            ...cookieOptions,
           })
         },
       },
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  void user
+  // セッションの更新を試行（トークンリフレッシュ）
+  // これにより、有効期限が切れたトークンも自動的に更新される
+  await supabase.auth.getUser()
 
   return supabaseResponse
 }

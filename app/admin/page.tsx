@@ -40,7 +40,7 @@ export default async function AdminPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">管理者ダッシュボード</h1>
-              <p className="mt-2 text-gray-600">OrderLogの管理機能をここから操作できます。</p>
+              <p className="mt-2 text-gray-600">o-log3の管理機能をここから操作できます。</p>
             </div>
             <Link
               href="/dashboard"

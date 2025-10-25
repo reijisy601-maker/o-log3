@@ -21,6 +21,8 @@ interface UploadedImage {
 type EvaluationErrorDetails = {
   suggestions?: string[]
   error?: string
+  message?: string
+  type?: string
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -44,19 +46,25 @@ const getEvaluationDetails = (error: unknown): EvaluationErrorDetails | null => 
 
   const suggestionsValue = (rawDetails as Record<string, unknown>).suggestions
   const errorValue = (rawDetails as Record<string, unknown>).error
+  const messageValue = (rawDetails as Record<string, unknown>).message
+  const typeValue = (rawDetails as Record<string, unknown>).type
 
   const suggestions = Array.isArray(suggestionsValue)
     ? suggestionsValue.filter((item): item is string => typeof item === 'string')
     : undefined
   const errorMessage = typeof errorValue === 'string' ? errorValue : undefined
+  const messageText = typeof messageValue === 'string' ? messageValue : undefined
+  const type = typeof typeValue === 'string' ? typeValue : undefined
 
-  if (!suggestions?.length && !errorMessage) {
+  if (!suggestions?.length && !errorMessage && !messageText && !type) {
     return null
   }
 
   return {
     suggestions,
     error: errorMessage,
+    message: messageText,
+    type,
   }
 }
 
@@ -315,7 +323,14 @@ const [isCompressing, setIsCompressing] = useState(false)
     } catch (error: unknown) {
       console.error('[dashboard] evaluation error:', error)
       const details = getEvaluationDetails(error)
-      if (details?.suggestions?.length) {
+      if (details?.type === 'token_limit') {
+        toast.error(details.error ?? '画像の処理に失敗しました', {
+          description:
+            details.message ||
+            '画像が複雑すぎる可能性があります。時間をおいて再試行してください。',
+          duration: 8000,
+        })
+      } else if (details?.suggestions?.length) {
         toast.error(details.error ?? '評価を完了できませんでした', {
           description: details.suggestions.join(' / '),
         })

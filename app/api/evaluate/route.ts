@@ -388,7 +388,93 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     console.error('[evaluate] Error:', error)
 
-    const message = error instanceof Error ? error.message : ''
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : ''
+
+    let directCode = ''
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error
+    ) {
+      const candidate = (error as { code?: unknown }).code
+      if (typeof candidate === 'string') {
+        directCode = candidate
+      }
+    }
+
+    let nestedCode = ''
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'error' in error
+    ) {
+      const nested = (error as { error?: unknown }).error
+      if (nested && typeof nested === 'object' && 'code' in nested) {
+        const candidate = (nested as { code?: unknown }).code
+        if (typeof candidate === 'string') {
+          nestedCode = candidate
+        }
+      }
+    }
+
+    let responseCode = ''
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error
+    ) {
+      const response = (error as { response?: unknown }).response
+      if (response && typeof response === 'object' && 'data' in response) {
+        const data = (response as { data?: unknown }).data
+        if (data && typeof data === 'object' && 'error' in data) {
+          const dataError = (data as { error?: unknown }).error
+          if (
+            dataError &&
+            typeof dataError === 'object' &&
+            'code' in dataError
+          ) {
+            const candidate = (dataError as { code?: unknown }).code
+            if (typeof candidate === 'string') {
+              responseCode = candidate
+            }
+          }
+        }
+      }
+    }
+
+    const lower = message.toLowerCase()
+    const isTokenLimitError =
+      directCode === 'context_length_exceeded' ||
+      directCode === 'max_tokens' ||
+      nestedCode === 'context_length_exceeded' ||
+      nestedCode === 'max_tokens' ||
+      responseCode === 'context_length_exceeded' ||
+      responseCode === 'max_tokens' ||
+      lower.includes('token') ||
+      lower.includes('length') ||
+      message.includes('トークン') ||
+      message.includes('上限')
+
+    if (isTokenLimitError) {
+      const friendlyMessage =
+        '画像が複雑すぎる可能性があります。\n\n📸 対処方法:\n• もう一度同じ画像で試してみてください（成功する場合があります）\n• より単純な画像を使用してください\n• 画像のファイルサイズを小さくしてください'
+
+      return NextResponse.json(
+        {
+          valid: false,
+          error: '画像の処理に失敗しました',
+          message: friendlyMessage,
+          type: 'token_limit',
+        },
+        { status: 400 }
+      )
+    }
+
     let status = 500
     let errorMessage = '評価処理中に予期しないエラーが発生しました'
     let suggestions = [
@@ -396,7 +482,6 @@ export async function POST(request: Request) {
       'ネットワーク環境を確認してください',
     ]
 
-    const lower = message.toLowerCase()
     if (lower.includes('timeout') || lower.includes('timed out')) {
       status = 504
       errorMessage = '処理に時間がかかりすぎています'

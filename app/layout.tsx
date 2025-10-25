@@ -14,8 +14,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OrderLog - 整理整頓記録システム",
+  title: "o-log3 - 整理整頓記録システム",
   description: "AIが解析する第一印象スコアで、整理状態を数値化",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
 };
 
 export default function RootLayout({

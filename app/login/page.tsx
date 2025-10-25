@@ -8,6 +8,8 @@ import { toast } from 'sonner'
 import { useAuthLock } from '@/lib/hooks/useAuthLock'
 import { useMagicLinkRateLimit } from '@/lib/hooks/useMagicLinkRateLimit'
 import { useSavedEmail } from '@/lib/hooks/useSavedEmail'
+import { updates, isNew, hasNewUpdates } from '@/lib/updates'
+import { X } from 'lucide-react'
 
 type Mode = 'login' | 'register'
 
@@ -16,6 +18,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showUpdates, setShowUpdates] = useState(false)
   const { isLocked, remainingTime, attempts, recordFailure, reset } = useAuthLock()
   const { canSend, remainingSeconds, recordSent } = useMagicLinkRateLimit()
   const { savedEmail, shouldSave, setShouldSave, saveEmail, clearSavedEmail } = useSavedEmail()
@@ -106,7 +109,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">OrderLog</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">o-log3</CardTitle>
           <CardDescription className="text-center">整理整頓記録システム</CardDescription>
         </CardHeader>
         <CardContent>
@@ -266,8 +269,121 @@ export default function LoginPage() {
               )}
             </div>
           </form>
+          {/* アップデート情報リンク */}
+          <div className="mt-8 pt-6 border-t text-center">
+            <button
+              onClick={() => setShowUpdates(true)}
+              className="text-sm text-gray-500 hover:text-blue-600 transition-colors inline-flex items-center gap-2"
+              type="button"
+            >
+              <span>📝 アップデート情報</span>
+              {hasNewUpdates() && (
+                <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full animate-pulse">
+                  NEW
+                </span>
+              )}
+            </button>
+          </div>
         </CardContent>
       </Card>
+      {/* アップデート情報モーダル */}
+      {showUpdates && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          onClick={() => setShowUpdates(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between p-4 md:p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+                📝 アップデート情報
+              </h2>
+              <button
+                onClick={() => setShowUpdates(false)}
+                className="p-2 hover:bg-white/50 rounded-full transition-colors"
+                type="button"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* コンテンツ */}
+            <div className="p-4 md:p-6 overflow-y-auto max-h-[calc(85vh-140px)]">
+              <div className="space-y-6">
+                {updates.map((update, index) => (
+                  <div
+                    key={index}
+                    className={`${
+                      isNew(update.date) ? 'bg-blue-50' : ''
+                    } border-l-4 ${
+                      update.type === 'feature'
+                        ? 'border-blue-500'
+                        : update.type === 'improvement'
+                        ? 'border-green-500'
+                        : 'border-red-500'
+                    } p-4 rounded-r transition-colors`}
+                  >
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="text-xs md:text-sm text-gray-600">
+                        {update.date}
+                      </span>
+                      <span
+                        className={`px-2 py-1 text-xs rounded font-medium ${
+                          update.type === 'feature'
+                            ? 'bg-blue-600 text-white'
+                            : update.type === 'improvement'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-red-600 text-white'
+                        }`}
+                      >
+                        {update.version}
+                      </span>
+                      {isNew(update.date) && (
+                        <span className="px-2 py-1 bg-red-500 text-white text-xs rounded animate-pulse">
+                          NEW
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base md:text-lg font-semibold mb-2 text-gray-800">
+                      {update.emoji && `${update.emoji} `}
+                      {update.title}
+                    </h3>
+                    <p className="text-sm md:text-base text-gray-700 mb-3">
+                      {update.description}
+                    </p>
+                    {update.details && update.details.length > 0 && (
+                      <ul className="list-disc list-inside text-xs md:text-sm text-gray-600 space-y-1">
+                        {update.details.map((detail, indexDetail) => (
+                          <li key={indexDetail}>{detail}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+
+                {updates.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>まだアップデート情報がありません</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* フッター */}
+            <div className="p-4 md:p-6 border-t bg-gray-50 text-center">
+              <a
+                href="/updates"
+                className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1"
+              >
+                すべてのアップデート履歴を見る →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

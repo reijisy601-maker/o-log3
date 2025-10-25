@@ -273,12 +273,12 @@ export default function LoginPage() {
           <div className="mt-8 pt-6 border-t text-center">
             <button
               onClick={() => setShowUpdates(true)}
-              className="text-sm text-gray-500 hover:text-blue-600 transition-colors inline-flex items-center gap-2 relative"
+              className="text-sm text-gray-500 hover:text-blue-600 transition-colors inline-flex items-center gap-2"
               type="button"
             >
               <span>📝 アップデート情報</span>
               {hasNewUpdates() && (
-                <span className="absolute -top-1 -right-8 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full animate-pulse">
+                <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full animate-pulse">
                   NEW
                 </span>
               )}

@@ -35,6 +35,9 @@ export default function LoginPage() {
     if (isLocked) {
       toast.error('ロック中です', {
         description: `残り ${Math.floor(remainingTime / 60)}分${remainingTime % 60}秒`,
+        classNames: {
+          description: 'font-semibold text-foreground/90',
+        },
       })
       return
     }
@@ -42,6 +45,9 @@ export default function LoginPage() {
     if (!canSend) {
       toast.error('送信間隔が短すぎます', {
         description: `${remainingSeconds}秒後に再送信できます`,
+        classNames: {
+          description: 'font-semibold text-foreground/90',
+        },
       })
       return
     }
@@ -69,6 +75,9 @@ export default function LoginPage() {
 
         toast.success(successMessage, {
           description: 'メールボックスを確認してください。60秒後に再送信できます',
+          classNames: {
+            description: 'font-semibold text-foreground/90',
+          },
         })
 
         if (shouldSave) {
@@ -87,6 +96,9 @@ export default function LoginPage() {
           toast.error('認証コードが正しくありません', {
             description:
               attemptsLeft > 0 ? `残り ${attemptsLeft} 回試行できます` : '5分間ロックされました',
+            classNames: {
+              description: 'font-semibold text-foreground/90',
+            },
           })
           setLoading(false)
           return
@@ -94,11 +106,17 @@ export default function LoginPage() {
 
         toast.error('送信に失敗しました', {
           description: data.error || '再度お試しください',
+          classNames: {
+            description: 'font-semibold text-foreground/90',
+          },
         })
       }
     } catch (error) {
       toast.error('エラーが発生しました', {
         description: 'ネットワーク接続を確認してください',
+        classNames: {
+          description: 'font-semibold text-foreground/90',
+        },
       })
     } finally {
       setLoading(false)

@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     if (isDevelopment) {
       log('[Magic Link] Detected Site URL:', siteUrl);
-      log('[Magic Link] Redirect URL:', `${siteUrl}/auth/callback`);
+      log('[Magic Link] Redirect URL:', `${siteUrl}/auth/confirm?next=/dashboard`);
       log('[Magic Link] Environment:', process.env.VERCEL_ENV || 'local');
     }
 
@@ -93,8 +93,7 @@ export async function POST(request: Request) {
       const { error: signInError } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${siteUrl}/auth/callback`,
-          shouldCreateUser: false,
+          emailRedirectTo: `${siteUrl}/auth/confirm?next=/dashboard`,
         },
       });
 
@@ -172,11 +171,7 @@ export async function POST(request: Request) {
     const { error: signUpError } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/callback`,
-        shouldCreateUser: true,
-        data: {
-          is_new_user: true,
-        },
+        emailRedirectTo: `${siteUrl}/auth/confirm?next=/dashboard`,
       },
     });
 
